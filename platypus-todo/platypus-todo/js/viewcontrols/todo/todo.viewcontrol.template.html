@@ -34,13 +34,13 @@
         </span>
         <ul id="filters">
             <li>
-                <a class="{{ @converters.booleanToSelected(filterBy === 'all') }}">All</a>
+                <a class="{{ @converters.booleanToSelected(filterBy === 'all') }}" href="#">All</a>
             </li>
             <li>
-                <a class="{{ @converters.booleanToSelected(filterBy === 'active') }}" href="active">Active</a>
+                <a class="{{ @converters.booleanToSelected(filterBy === 'active') }}" href="#/active">Active</a>
             </li>
             <li>
-                <a class="{{ @converters.booleanToSelected(filterBy === 'completed') }}" href="completed">Completed</a>
+                <a class="{{ @converters.booleanToSelected(filterBy === 'completed') }}" href="#/completed">Completed</a>
             </li>
         </ul>
         <button id="clear-completed" plat-tap="clearCompletedTodos()" plat-visible="{{completedCount > 0}}">Clear completed ({{completedCount}})</button>
