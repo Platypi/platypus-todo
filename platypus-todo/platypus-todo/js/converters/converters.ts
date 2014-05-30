@@ -66,6 +66,8 @@
         booleanToValue(value: string, condition: boolean): string;
     }
 
+    export var IConverters = Converters;
+
     /**
      * Here is how you register an injectable. This injectable is registered as 
      * 'converters'. If another component wants to use this injectable, it simply 
@@ -73,5 +75,5 @@
      * because it is obtained as a resource from the Todo view control template. 
      * Resources offer a way of including objects in your view outside of your context.
      */
-    plat.register.injectable('converters', Converters);
+    plat.register.injectable('converters', IConverters);
 }

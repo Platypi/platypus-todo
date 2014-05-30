@@ -8,7 +8,9 @@ module app.viewcontrols {
          * All injectable dependencies defined during control registration will be 
          * passed into the constructor.
          */
-        constructor(private todoFactory: models.ITodoFactory, private state: models.State, private utils: plat.IUtils) {
+        constructor(private todoRepository: repositories.ITodoRepository,
+            private stateRepository: repositories.IStateRepository,
+            private utils: plat.IUtils) {
             super();
         }
 
@@ -36,7 +38,7 @@ module app.viewcontrols {
          * specified a context.
          */
         initialize() {
-            this.context.todos = this.todoFactory.getTodos();
+            this.context.todos = this.todoRepository.getTodos();
         }
 
         /**
@@ -106,7 +108,7 @@ module app.viewcontrols {
         }
 
         storeTodos() {
-            this.todoFactory.setTodos(this.context.todos);
+            this.todoRepository.setTodos(this.context.todos);
         }
 
         addTodo() {
@@ -120,7 +122,7 @@ module app.viewcontrols {
                 return;
             }
 
-            this.context.todos.push(this.todoFactory.createTodo(title, false));
+            this.context.todos.push(this.todoRepository.addTodo(title, false));
             this.context.newTodo = '';
         }
 
@@ -137,7 +139,7 @@ module app.viewcontrols {
 
         filter(state: any) {
             this.context.filterBy = state;
-            this.state.setState(state);
+            this.stateRepository.setState(state);
         }
 
         editTodo(todo: models.ITodo) {
@@ -194,8 +196,8 @@ module app.viewcontrols {
      * passed to the constructor of the control when it is instantiated.
      */
     plat.register.viewControl('main', TodoMainVC, [
-        models.TodoFactoryStatic,
-        models.State,
-        plat.Utils
+        repositories.ITodoRepository,
+        repositories.IStateRepository,
+        plat.IUtils
     ], ['', ':status']);
 }

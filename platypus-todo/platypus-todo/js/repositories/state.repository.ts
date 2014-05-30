@@ -31,5 +31,7 @@
         setState(state: string): void;
     }
 
-    plat.register.injectable('stateRepository', StateRepository, [plat.storage.LocalStorage]);
+    export var IStateRepository = StateRepository;
+
+    plat.register.injectable('stateRepository', IStateRepository, [plat.storage.ILocalStorage]);
 }
