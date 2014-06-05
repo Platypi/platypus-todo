@@ -1,12 +1,12 @@
 /**
- * PlatypusTS v0.0.1.8 (http://getplatypi.com) 
+ * PlatypusTS v0.0.1.9 (http://getplatypi.com) 
  * Copyright 2014 Platypi, LLC. All rights reserved. 
  * 
  * PlatypusTS is licensed under the GPL-3.0 found at  
  * http://opensource.org/licenses/GPL-3.0 
  */
 module plat {
-    ﻿/**
+    /**
      * Injectables
      */
     var __AppStatic = '$AppStatic',
@@ -27,7 +27,7 @@ module plat {
         __Parser = '$Parser',
         __Regex = '$Regex',
         __Tokenizer = '$Tokenizer',
-        __Navigator = '$Navigator',
+        __NavigatorInstance = '$NavigatorInstance',
         __RoutingNavigator = '$RoutingNavigator',
         __ContextManagerStatic = '$ContextManagerStatic',
         __Compiler = '$Compiler',
@@ -38,6 +38,8 @@ module plat {
         __CacheFactory = '$CacheFactory',
         __ManagerCache = '$ManagerCache',
         __TemplateCache = '$TemplateCache',
+        __Animator = '$Animator',
+        __AnimationInstance = '$AnimationInstance',
         __AttributesInstance = '$AttributesInstance',
         __BindableTemplatesFactory = '$BindableTemplatesFactory',
         __Dom = '$Dom',
@@ -46,7 +48,7 @@ module plat {
         __DomEventInstance = '$DomEventInstance',
         __ResourcesFactory = '$ResourcesFactory',
         __TemplateControlFactory = '$TemplateControlFactory',
-        __ViewControlFactory = '$ViewControlFactory',
+        __BaseViewControlFactory = '$BaseViewControlFactory',
         __Utils = '$Utils',
         __Browser = '$Browser',
         __BrowserConfig = '$BrowserConfig',
@@ -111,7 +113,17 @@ module plat {
         __Routeport = __Plat + 'routeport',
         __Viewport = __Plat + 'viewport';
     
-    ﻿var __nativeIsArray = !!Array.isArray,
+    /**
+     * Animations
+     */
+    var __Hide = __Plat + 'hide',
+        __Enter = __Plat + 'enter',
+        __Leave = __Plat + 'leave',
+        __Move = __Plat + 'move',
+        __FadeIn = __Plat + 'fadein',
+        __FadeOut = __Plat + 'fadeout';
+    
+    var __nativeIsArray = !!Array.isArray,
         __uids__: plat.IObject<Array<string>> = {};
     
     function noop(): void { }
@@ -430,7 +442,7 @@ module plat {
                 => index ? char.toUpperCase() : char);
     }
     
-    ﻿var __nodeNameRegex = /<([\w:]+)/,
+    var __nodeNameRegex = /<([\w:]+)/,
         __option = [1, '<select multiple="multiple">', '</select>'],
         __table = [1, '<table>', '</table>'],
         __tableData = [3, '<table><tbody><tr>', '</tr></tbody></table>'],
@@ -768,10 +780,10 @@ module plat {
     var controlInjectors: plat.dependency.IInjectorObject<plat.IControl> = {};
     
     /**
-     * An IInjectorObject of plat.ui.IViewControls. Contains all the registered
+     * An IInjectorObject of plat.ui.IBaseViewControls. Contains all the registered
      * view controls for an application.
      */
-    var viewControlInjectors: plat.dependency.IInjectorObject<plat.ui.IViewControl> = {};
+    var viewControlInjectors: plat.dependency.IInjectorObject<plat.ui.IBaseViewControl> = {};
     
     /**
      * An IInjectorObject of objects. Contains all the registered
@@ -878,18 +890,33 @@ module plat {
         }
 
         /**
-         * Registers a ViewControl with the framework. The framework will instantiate the IControl when needed. The 
+         * Registers a ViewControl with the framework. The framework will instantiate the control when needed. The 
          * dependencies array corresponds to injectables that will be passed into the Constructor of the control.
          * 
          * @param name The control type, corresponding to the HTML notation for creating a new IViewControl. Used for navigation 
          * to the specified ViewControl.
          * @param Type The constructor for the IViewControl.
          * @param dependencies An optional array of strings representing the dependencies needed for the IViewControl injector.
-         * @param routes Optional route strings (or regular expressions) used for matching a URL to the registered IViewControl.
+         * 
+         * @example register.viewControl('my-view-control', MyViewControl);
+         */
+        export function viewControl<T>(name: string, Type: new (...args: any[]) => ui.IBaseViewControl,
+            dependencies?: Array<any>): typeof register;
+        /**
+         * Registers a WebViewControl with the framework. The framework will instantiate the control when needed. The 
+         * dependencies array corresponds to injectables that will be passed into the Constructor of the control.
+         * 
+         * @param name The control type, corresponding to the HTML notation for creating a new IWebViewControl. Used for navigation 
+         * to the specified WebViewControl.
+         * @param Type The constructor for the IWebViewControl.
+         * @param dependencies An optional array of strings representing the dependencies needed for the IWebViewControl injector.
+         * @param routes Optional route strings (or regular expressions) used for matching a URL to the registered IWebViewControl.
          * 
          * @example register.viewControl('my-view-control', MyViewControl, null, ['customers/:customer(/:ordernumber)']);
          */
-        export function viewControl(name: string, Type: new (...args: any[]) => ui.IViewControl,
+        export function viewControl<T>(name: string, Type: new (...args: any[]) => ui.IWebViewControl,
+            dependencies?: Array<any>, routes?: Array<any>): typeof register;
+        export function viewControl<T>(name: string, Type: new (...args: any[]) => ui.IBaseViewControl,
             dependencies?: Array<any>, routes?: Array<any>): typeof register {
             if (isString(name)) {
                 name = name.toLowerCase();
@@ -1247,6 +1274,13 @@ module plat {
      * Returns the requested injectable dependency.
      * 
      * @param dependency The dependency Type to return.
+     * @param {T} The requested dependency.
+     */
+    export function acquire<T>(dependency: () => T): T;
+    /**
+     * Returns the requested injectable dependency.
+     * 
+     * @param dependency The dependency Type to return.
      * @param {any} The requested dependency.
      */
     export function acquire(dependency: Function): any;
@@ -1292,10 +1326,10 @@ module plat {
             output: Array<any> = [];
 
         for (var i = 0; i < length; ++i) {
-            output = deps[i].inject();
+            output.push(deps[i].inject());
         }
 
-        if (array) {
+        if (!array) {
             return output[0];
         }
 
@@ -1307,6 +1341,13 @@ module plat {
      * as an array in the order they were specified.
      */
     export interface IAcquire {
+        /**
+         * Returns the requested injectable dependency.
+         * 
+         * @param dependency The dependency Type to return.
+         * @param {T} The requested dependency.
+         */
+        <T>(dependency: () => T): T;
         /**
          * Returns the requested injectable dependency.
          * 
@@ -1607,8 +1648,10 @@ module plat {
      * A class for checking browser compatibility issues.
      */
     export class Compat implements ICompat {
-        $document = acquire(__Document);
+        $Window: Window = acquire(__Window);
+        $Document: Document = acquire(__Document);
 
+        isCompatible: boolean;
         cordova: boolean;
         pushState: boolean;
         fileSupported: boolean;
@@ -1621,67 +1664,139 @@ module plat {
         hasTouchEvents: boolean;
         hasPointerEvents: boolean;
         hasMsPointerEvents: boolean;
+        animationSupported: boolean;
+        platCss: boolean;
         mappedEvents: IMappedEvents;
+        animationEvents: IAnimationEvents;
 
-        get isCompatible() {
-            return isFunction(Object.defineProperty) &&
-                isFunction(this.$document.querySelector);
+        /**
+         * Define everything
+         */
+        constructor() {
+            this.__defineBooleans();
+            this.__defineMappedEvents();
+            this.__defineAnimationEvents();
+            this.__findCss();
         }
 
-        constructor() {
-            var $contextManager: observable.IContextManagerStatic = acquire(__ContextManagerStatic),
-                $window: Window = acquire(__Window),
-                define = $contextManager.defineGetter,
+        private __defineBooleans() {
+            var $window = this.$Window,
                 navigator = $window.navigator,
                 history = $window.history,
-                hasTouch = !isUndefined((<any>$window).ontouchstart),
-                hasPointer = !!navigator.pointerEnabled,
-                hasMsPointer = !!navigator.msPointerEnabled,
                 def = (<any>$window).define,
                 msA = (<any>$window).MSApp;
 
-            define(this, 'cordova', !isNull((<any>$window).cordova));
-            define(this, 'pushState', !(isNull(history) || isNull(history.pushState)));
-            define(this, 'fileSupported', !(isUndefined((<any>$window).File) || isUndefined((<any>$window).FormData)));
-            define(this, 'amd', isFunction(def) && !isNull(def.amd));
-            define(this, 'msApp', isObject(msA) && isFunction(msA.execUnsafeLocalFunction));
-            define(this, 'indexedDb', !isNull($window.indexedDB));
-            define(this, 'proto', isObject((<any>{}).__proto__));
-            define(this, 'getProto', isFunction(Object.getPrototypeOf));
-            define(this, 'setProto', isFunction((<any>Object).setPrototypeOf));
-            define(this, 'hasTouchEvents', hasTouch);
-            define(this, 'hasPointerEvents', hasPointer);
-            define(this, 'hasMsPointerEvents', hasMsPointer);
+            this.isCompatible = isFunction(Object.defineProperty) && isFunction(this.$Document.querySelector);
+            this.cordova = !isNull((<any>$window).cordova);
+            this.pushState = !(isNull(history) || isNull(history.pushState));
+            this.fileSupported = !(isUndefined((<any>$window).File) || isUndefined((<any>$window).FormData));
+            this.amd = isFunction(def) && !isNull(def.amd);
+            this.msApp = isObject(msA) && isFunction(msA.execUnsafeLocalFunction);
+            this.indexedDb = !isNull($window.indexedDB);
+            this.proto = isObject((<any>{}).__proto__);
+            this.getProto = isFunction(Object.getPrototypeOf);
+            this.setProto = isFunction((<any>Object).setPrototypeOf);
+            this.hasTouchEvents = !isUndefined((<any>$window).ontouchstart);
+            this.hasPointerEvents = !!navigator.pointerEnabled;
+            this.hasMsPointerEvents = !!navigator.msPointerEnabled;
+        }
 
-            if (hasPointer) {
-                define(this, 'mappedEvents', {
-                    $touchstart: 'pointerdown',
-                    $touchend: 'pointerup',
-                    $touchmove: 'pointermove',
-                    $touchcancel: 'pointercancel'
-                });
-            } else if (hasMsPointer) {
-                define(this, 'mappedEvents', {
-                    $touchstart: 'MSPointerDown',
-                    $touchend: 'MSPointerUp',
-                    $touchmove: 'MSPointerMove',
-                    $touchcancel: 'MSPointerCancel'
-                });
-            } else if (hasTouch) {
-                define(this, 'mappedEvents', {
-                    $touchstart: 'touchstart',
-                    $touchend: 'touchend',
-                    $touchmove: 'touchmove',
-                    $touchcancel: 'touchcancel'
-                });
+        private __defineMappedEvents() {
+            if (this.hasPointerEvents) {
+                this.mappedEvents = {
+                    $touchStart: 'pointerdown',
+                    $touchEnd: 'pointerup',
+                    $touchMove: 'pointermove',
+                    $touchCancel: 'pointercancel'
+                };
+            } else if (this.hasMsPointerEvents) {
+                this.mappedEvents = {
+                    $touchStart: 'MSPointerDown',
+                    $touchEnd: 'MSPointerUp',
+                    $touchMove: 'MSPointerMove',
+                    $touchCancel: 'MSPointerCancel'
+                };
+            } else if (this.hasTouchEvents) {
+                this.mappedEvents = {
+                    $touchStart: 'touchstart',
+                    $touchEnd: 'touchend',
+                    $touchMove: 'touchmove',
+                    $touchCancel: 'touchcancel'
+                };
             } else {
-                define(this, 'mappedEvents', {
-                    $touchstart: 'mousedown',
-                    $touchend: 'mouseup',
-                    $touchmove: 'mousemove',
-                    $touchcancel: null
-                });
+                this.mappedEvents = {
+                    $touchStart: 'mousedown',
+                    $touchEnd: 'mouseup',
+                    $touchMove: 'mousemove',
+                    $touchCancel: null
+                };
             }
+        }
+
+        private __defineAnimationEvents() {
+            var div = this.$Document.createElement('div'),
+                animations: IObject<string> = {
+                    OAnimation: 'o',
+                    MozAnimation: '',
+                    WebkitAnimation: 'webkit',
+                    animation: ''
+                },
+                keys = Object.keys(animations),
+                index = keys.length,
+                prefix = '',
+                key: any;
+
+            while (index-- > 0) {
+                key = keys[index];
+                if (!isUndefined(div.style[key])) {
+                    prefix = animations[key];
+                    break;
+                }
+            }
+
+            this.animationSupported = index > -1;
+            this.animationEvents = prefix === 'webkit' ? {
+                $animationStart: prefix + 'AnimationStart',
+                $animationEnd: prefix + 'AnimationEnd',
+                $transitionStart: prefix + 'TransitionStart',
+                $transitionEnd: prefix + 'TransitionEnd'
+            } : {
+                $animationStart: prefix + 'animationstart',
+                $animationEnd: prefix + 'animationend',
+                $transitionStart: prefix + 'transitionstart',
+                $transitionEnd: prefix + 'transitionend'
+            };
+        }
+
+        private __findCss() {
+            var $document = this.$Document,
+                styleSheets = $document.styleSheets;
+
+            if (isNull(styleSheets)) {
+                this.platCss = false;
+                return;
+            }
+
+            var length = styleSheets.length,
+                styleSheet: CSSStyleSheet,
+                rules: CSSRuleList,
+                j: number, jLength: number;
+
+            for (var i = 0; i < length; ++i) {
+                styleSheet = <CSSStyleSheet>styleSheets[i];
+                rules = styleSheet.cssRules;
+                jLength = (<CSSRuleList>(rules || [])).length;
+                for (j = 0; j < jLength; ++j) {
+                    if (rules[j].cssText.indexOf('[' + __Hide + ']') !== -1) {
+                        this.platCss = true;
+                        return;
+                    }
+                }
+            }
+
+            var $exception: IExceptionStatic = acquire(__ExceptionStatic);
+            $exception.warn('platypus.css was not found prior to platypus.js. If you intend to use ' +
+                'platypus.css, please move it before platypus.js inside your head or body declaration');
         }
     }
 
@@ -1695,35 +1810,16 @@ module plat {
     register.injectable(__Compat, ICompat);
 
     /**
-     * Describes an object containing the correctly mapped touch events for the browser.
-     */
-    export interface IMappedEvents extends IObject<string> {
-        /**
-         * An event type for touch start.
-         */
-        $touchstart: string;
-
-        /**
-         * An event type for touch end.
-         */
-        $touchend: string;
-
-        /**
-         * An event type for touch move.
-         */
-        $touchmove: string;
-
-        /**
-         * An event type for touch cancel.
-         */
-        $touchcancel: string;
-    }
-
-    /**
      * An object containing boolean values signifying browser 
      * and/or platform compatibilities.
      */
     export interface ICompat {
+        /**
+         * Determines if the browser is modern enough to correctly 
+         * run PlatypusTS.
+         */
+        isCompatible: boolean;
+
         /**
          * Signifies whether or not Cordova is defined. If it is, 
          * we hook up ALM events to Cordova's functions.
@@ -1791,15 +1887,74 @@ module plat {
         hasMsPointerEvents: boolean;
 
         /**
+         * Whether or not the browser supports animations.
+         */
+        animationSupported: boolean;
+
+        /**
+         * Whether the platypus.css file was included or not.
+         */
+        platCss: boolean;
+
+        /**
          * An object containing the correctly mapped touch events for the browser.
          */
         mappedEvents: IMappedEvents;
 
         /**
-         * Determines if the browser is modern enough to correctly 
-         * run PlatypusTS.
+         * An object containing the properly prefixed animation events.
          */
-        isCompatible: boolean;
+        animationEvents: IAnimationEvents;
+    }
+
+    /**
+     * Describes an object containing the correctly mapped touch events for the browser.
+     */
+    export interface IMappedEvents extends IObject<string> {
+        /**
+         * An event type for touch start.
+         */
+        $touchStart: string;
+
+        /**
+         * An event type for touch end.
+         */
+        $touchEnd: string;
+
+        /**
+         * An event type for touch move.
+         */
+        $touchMove: string;
+
+        /**
+         * An event type for touch cancel.
+         */
+        $touchCancel: string;
+    }
+
+    /**
+     * Describes an object containing the properly prefixed animation events.
+     */
+    export interface IAnimationEvents extends IObject<string> {
+        /**
+         * The animation start event.
+         */
+        $animationStart: string;
+
+        /**
+         * The animation end event.
+         */
+        $animationEnd: string;
+
+        /**
+         * The transition start event.
+         */
+        $transitionStart: string;
+
+        /**
+         * The transition end event.
+         */
+        $transitionEnd: string;
     }
 
     /**
@@ -2298,21 +2453,21 @@ module plat {
      * The Type for referencing the '$Window' injectable as a dependency. 
      * Used so that the Window can be mocked.
      */
-    export function IWindow(): Window {
+    export function Window(): Window {
         return window;
     }
 
-    register.injectable(__Window, IWindow);
+    register.injectable(__Window, Window);
 
     /**
      * The Type for referencing the '$Document' injectable as a dependency. 
      * Used so that the Window can be mocked.
      */
-    export function IDocument($Window: Window): Document {
+    export function Document($Window: Window): Document {
         return $Window.document;
     }
 
-    register.injectable(__Document, IDocument, [__Window]);
+    register.injectable(__Document, Document, [__Window]);
 
     export module expressions {
         /**
@@ -4481,8 +4636,10 @@ module plat {
 
                 if (this.__firstRoute) {
                     this.__firstRoute = false;
-                    this._routeChanged(null, currentUtils);
-                    return;
+                    if (isEmpty(path)) {
+                        this._routeChanged(null, currentUtils);
+                        return;
+                    }
                 }
 
                 var build = this._buildRoute(path, options.query);
@@ -4531,7 +4688,7 @@ module plat {
              * Builds a valid route with a valid query string to use for navigation.
              * 
              * @param routeParameter The route portion of the navigation path. Used to 
-             * match with a registered ViewControl.
+             * match with a registered WebViewControl.
              * @param query The route query object if passed into the 
              * IRouteNavigationOptions.
              */
@@ -4614,14 +4771,14 @@ module plat {
             }
 
             /**
-             * Registers a ViewControl's route.
+             * Registers a WebViewControl's route.
              * 
              * @param route Can be either a string or RegExp.
-             * @param injector The injector for the ViewControl defined by 
+             * @param injector The injector for the WebViewControl defined by 
              * the type.
              * @param type The control type.
              */
-            _registerRoute(route: any, injector: dependency.IInjector<ui.IViewControl>, type: string): void {
+            _registerRoute(route: any, injector: dependency.IInjector<ui.IBaseViewControl>, type: string): void {
                 var regexp = isRegExp(route),
                     routeParameters: IRouteMatcher;
 
@@ -4805,7 +4962,7 @@ module plat {
 
         /**
          * Describes the object that handles route registration and navigation 
-         * to and from IViewControls within the Routeport.
+         * to and from IWebViewControls within the Routeport.
          */
         export interface IRouter {
             /**
@@ -4857,12 +5014,12 @@ module plat {
          */
         export interface IRouteMatcher {
             /**
-             * The IViewControl injector.
+             * The IBaseViewControl injector.
              */
-            injector?: dependency.IInjector<ui.IViewControl>;
+            injector?: dependency.IInjector<ui.IBaseViewControl>;
 
             /**
-             * The type of IViewControl
+             * The type of IBaseViewControl
              */
             type?: string;
 
@@ -4886,10 +5043,10 @@ module plat {
             /**
              * The associated view control injector for the route.
              */
-            injector: dependency.IInjector<ui.IViewControl>;
+            injector: dependency.IInjector<ui.IBaseViewControl>;
 
             /**
-             * The type of IViewControl
+             * The type of IBaseViewControl
              */
             type: string;
 
@@ -5444,7 +5601,7 @@ module plat {
         /**
          * The Type for referencing the '$Promise' injectable as a dependency.
          */
-        export function IPromise($Window: any): IPromise {
+        export function IPromise($Window?: any): IPromise {
             if (!isNull($Window.Promise) &&
                 isFunction($Window.Promise.all) &&
                 isFunction($Window.Promise.cast) &&
@@ -6962,7 +7119,7 @@ module plat {
          * clone a template when you put it in the cache. It will
          * also clone the template when you retrieve it.
          */
-        class TemplateCache extends Cache<any> implements ITemplateCache {
+        export class TemplateCache extends Cache<any> implements ITemplateCache {
             $Promise: async.IPromise = acquire(__Promise);
 
             constructor() {
@@ -8188,16 +8345,14 @@ module plat {
              */
             _addObservableListener(absoluteIdentifier: string,
                 observableListener: IListener): IRemoveListener {
-                var uid = observableListener.uid,
-                    contextManagerCallback = this._removeCallback.bind(this);
+                var uid = observableListener.uid;
 
                 this.__add(absoluteIdentifier, observableListener);
 
                 var remove = () => {
                     ContextManager.removeIdentifier([uid], absoluteIdentifier);
-                    contextManagerCallback(absoluteIdentifier, uid);
+                    this._removeCallback(absoluteIdentifier, uid);
                 };
-            
 
                 ContextManager.pushRemoveListener(absoluteIdentifier, uid, remove);
 
@@ -9254,10 +9409,10 @@ module plat {
          * The Type for referencing the '$EventManagerStatic' injectable as a dependency.
          */
         export function IEventManagerStatic(
-            $Compat: ICompat,
-            $Document: Document,
-            $Window: Window,
-            $Dom: ui.IDom): IEventManagerStatic {
+            $Compat?: ICompat,
+            $Document?: Document,
+            $Window?: Window,
+            $Dom?: ui.IDom): IEventManagerStatic {
                 EventManager.$Compat = $Compat;
                 EventManager.$Document = $Document;
                 EventManager.$Window = $Window;
@@ -9607,7 +9762,7 @@ module plat {
         /**
          * The Type for referencing the '$NavigationEventStatic' injectable as a dependency.
          */
-        export function INavigationEventStatic($EventManagerStatic: IEventManagerStatic): INavigationEventStatic {
+        export function INavigationEventStatic($EventManagerStatic?: IEventManagerStatic): INavigationEventStatic {
             NavigationEvent.$EventManagerStatic = $EventManagerStatic;
             return NavigationEvent;
         }
@@ -9766,7 +9921,7 @@ module plat {
         /**
          * The Type for referencing the '$ErrorEventStatic' injectable as a dependency.
          */
-        export function IErrorEventStatic($EventManagerStatic: IEventManagerStatic): IErrorEventStatic {
+        export function IErrorEventStatic($EventManagerStatic?: IEventManagerStatic): IErrorEventStatic {
             ErrorEvent.$EventManagerStatic = $EventManagerStatic;
             return ErrorEvent;
         }
@@ -9813,6 +9968,10 @@ module plat {
             initialize(name: string, sender: any, direction?: string, error?: E): void;
         }
     }
+    /**
+     * @module plat
+     */
+
     /**
      * Used for facilitating data and DOM manipulation. Contains lifecycle events 
      * as well as properties for communicating with other controls. This is the base
@@ -10085,14 +10244,19 @@ module plat {
         observe<T>(context: any, property: number, listener: (value: T, oldValue: T) => void): IRemoveListener;
         observe(context: any, property: any, listener: (value: any, oldValue: any) => void): IRemoveListener {
             if (isNull(context) || !context.hasOwnProperty(property)) {
-                return;
+                return noop;
             }
 
-            var control = isFunction((<any>this).getAbsoluteIdentifier) ? this : <IControl>this.parent,
-                absoluteIdentifier = (<ui.ITemplateControl>control).getAbsoluteIdentifier(context);
+            var control = isFunction((<ui.ITemplateControl>(<any>this)).getAbsoluteIdentifier) ? this : <IControl>this.parent;
+
+            if (isNull(control) || !isFunction((<ui.ITemplateControl>(<any>control)).getAbsoluteIdentifier)) {
+                return noop;
+            }
+
+            var absoluteIdentifier = (<ui.ITemplateControl>(<any>control)).getAbsoluteIdentifier(context);
 
             if (isNull(absoluteIdentifier)) {
-                return;
+                return noop;
             }
 
             var contextManager = Control.$ContextManagerStatic.getManager(Control.getRootControl(this));
@@ -10107,25 +10271,30 @@ module plat {
         observeArray<T>(context: Array<T>, property: number, listener: (ev: observable.IArrayMethodInfo<T>) => void): IRemoveListener;
         observeArray(context: any, property: any, listener: (ev: observable.IArrayMethodInfo<any>) => void): IRemoveListener {
             if (isNull(context) || !context.hasOwnProperty(property)) {
-                return;
+                return noop;
             }
 
             var array = context[property],
                 callback = listener.bind(this);
 
             if (!isArray(array)) {
-                return;
+                return noop;
             }
 
-            var control = isFunction((<any>this).getAbsoluteIdentifier) ? this : <IControl>this.parent,
-                absoluteIdentifier = (<ui.ITemplateControl>control).getAbsoluteIdentifier(context),
+            var control = isFunction((<ui.ITemplateControl>(<any>this)).getAbsoluteIdentifier) ? this : <IControl>this.parent;
+
+            if (isNull(control) || !isFunction((<ui.ITemplateControl>(<any>control)).getAbsoluteIdentifier)) {
+                return noop;
+            }
+
+            var absoluteIdentifier = (<ui.ITemplateControl>(<any>control)).getAbsoluteIdentifier(context),
                 ContextManager = Control.$ContextManagerStatic;
 
             if (isNull(absoluteIdentifier)) {
                 if (property === 'context') {
-                    absoluteIdentifier = (<ui.ITemplateControl>control).absoluteContextPath;
+                    absoluteIdentifier = (<ui.ITemplateControl>(<any>control)).absoluteContextPath;
                 } else {
-                    return;
+                    return noop;
                 }
             } else {
                 absoluteIdentifier += '.' + property;
@@ -10161,8 +10330,8 @@ module plat {
 
             var parsedExpression: expressions.IParsedExpression = isString(expression) ? Control.$Parser.parse(expression) : expression,
                 aliases = parsedExpression.aliases,
-                control: ui.TemplateControl = !isNull((<ui.TemplateControl>this).resources) ?
-                    <ui.TemplateControl>this :
+                control: ui.TemplateControl = !isNull((<ui.TemplateControl>(<any>this)).resources) ?
+                    <ui.TemplateControl>(<any>this) :
                     <ui.TemplateControl>this.parent,
                 alias: string,
                 length = aliases.length,
@@ -10174,7 +10343,7 @@ module plat {
                 evaluateExpression = TemplateControl.evaluateExpression,
                 i: number;
 
-            if (isNull(control)) {
+            if (isNull(control) || !isString(control.absoluteContextPath)) {
                 return noop;
             }
 
@@ -10235,7 +10404,7 @@ module plat {
                     }
                 }));
             }
-
+            
             return () => {
                 var length = listeners.length;
 
@@ -10245,11 +10414,11 @@ module plat {
             };
         }
 
-        evaluateExpression(expression: string, context?: any): any;
-        evaluateExpression(expression: expressions.IParsedExpression, context?: any): any;
-        evaluateExpression(expression: any, context?: any): any {
+        evaluateExpression(expression: string, aliases?: any): any;
+        evaluateExpression(expression: expressions.IParsedExpression, aliases?: any): any;
+        evaluateExpression(expression: any, aliases?: any): any {
             var TemplateControl = ui.TemplateControl;
-            return TemplateControl.evaluateExpression(expression, this.parent, context);
+            return TemplateControl.evaluateExpression(expression, this.parent, aliases);
         }
 
         dispatchEvent(name: string, direction?: string, ...args: any[]): void;
@@ -10274,8 +10443,6 @@ module plat {
             manager.dispatch(name, sender, direction, args);
         }
 
-        on(name: string, listener: (ev: events.IDispatchEventInstance, ...args: any[]) => void): IRemoveListener;
-        on(name: 'routeChange', listener: (ev: events.IDispatchEventInstance, route: web.IRoute<any>) => void): IRemoveListener;
         on(name: string, listener: (ev: events.IDispatchEventInstance, ...args: any[]) => void): IRemoveListener {
             var manager = Control.$EventManagerStatic;
             return manager.on(this.uid, name, listener, this);
@@ -10288,9 +10455,9 @@ module plat {
      * The Type for referencing the '$ControlFactory' injectable as a dependency.
      */
     export function IControlFactory(
-            $Parser: expressions.IParser,
-            $ContextManagerStatic: observable.IContextManagerStatic,
-            $EventManagerStatic: events.IEventManagerStatic): IControlFactory {
+            $Parser?: expressions.IParser,
+            $ContextManagerStatic?: observable.IContextManagerStatic,
+            $EventManagerStatic?: events.IEventManagerStatic): IControlFactory {
         Control.$Parser = $Parser;
         Control.$ContextManagerStatic = $ContextManagerStatic;
         Control.$EventManagerStatic = $EventManagerStatic;
@@ -10381,7 +10548,7 @@ module plat {
         type?: string;
 
         /**
-         * The parent control that created this control. If this control does not implement ui.IViewControl
+         * The parent control that created this control. If this control does not implement ui.IBaseViewControl
          * then it will inherit its context from the parent.
          */
         parent?: ui.ITemplateControl;
@@ -10417,7 +10584,7 @@ module plat {
         /**
          * The initialize event method for a control. In this method a control should initialize all the necessary 
          * variables. This method is typically only necessary for view controls. If a control does not implement 
-         * ui.IViewControl then it is not safe to access, observe, or modify the context property in this method.
+         * ui.IBaseViewControl then it is not safe to access, observe, or modify the context property in this method.
          * A view control should call services/set context in this method in order to fire the loaded event. No control 
          * will be loaded until the view control has specified a context.
          */
@@ -10462,7 +10629,7 @@ module plat {
          * @param useCapture Whether to fire the event on the capture or the bubble phase 
          * of event propagation.
          */
-        addEventListener(element: Node, type: string, listener: ui.IGestureListener, useCapture?: boolean): IRemoveListener;
+        addEventListener? (element: Node, type: string, listener: ui.IGestureListener, useCapture?: boolean): IRemoveListener;
         /**
          * Adds an event listener of the specified type to the specified element. Removal of the 
          * event is handled automatically upon disposal.
@@ -10473,7 +10640,7 @@ module plat {
          * @param useCapture Whether to fire the event on the capture or the bubble phase 
          * of event propagation.
          */
-        addEventListener(element: Window, type: string, listener: ui.IGestureListener, useCapture?: boolean): IRemoveListener;
+        addEventListener? (element: Window, type: string, listener: ui.IGestureListener, useCapture?: boolean): IRemoveListener;
 
         /**
          * Allows an IControl to observe any property on its context and receive updates when
@@ -10526,7 +10693,7 @@ module plat {
          * @param expression The expression string to watch for changes.
          * @param listener The listener to call when the expression identifer values change.
          */
-        observeExpression(expression: string, listener: (value: any, oldValue: any) => void): IRemoveListener;
+        observeExpression? (expression: string, listener: (value: any, oldValue: any) => void): IRemoveListener;
         /**
          * Uses a parsed expression to observe any associated identifiers. When an identifier
          * value changes, the listener will be called.
@@ -10534,7 +10701,7 @@ module plat {
          * @param expression The IParsedExpression to watch for changes.
          * @param listener The listener to call when the expression identifer values change.
          */
-        observeExpression(expression: expressions.IParsedExpression, listener: (value: any, oldValue: any) => void): IRemoveListener;
+        observeExpression? (expression: expressions.IParsedExpression, listener: (value: any, oldValue: any) => void): IRemoveListener;
 
         /**
          * Evaluates an expression string, using the control.context.
@@ -10543,7 +10710,7 @@ module plat {
          * @param context An optional context with which to parse. If 
          * no context is specified, the control.context will be used.
          */
-        evaluateExpression(expression: string, context?: any): any;
+        evaluateExpression? (expression: string, context?: any): any;
         /**
          * Evaluates a parsed expression, using the control.context.
          * 
@@ -10551,7 +10718,7 @@ module plat {
          * @param context An optional context with which to parse. If 
          * no context is specified, the control.context will be used.
          */
-        evaluateExpression(expression: expressions.IParsedExpression, context?: any): any;
+        evaluateExpression? (expression: expressions.IParsedExpression, context?: any): any;
 
         /**
          * Creates a new DispatchEvent and propagates it to controls based on the 
@@ -10567,7 +10734,7 @@ module plat {
          * 
          * @see events.eventDirection
          */
-        dispatchEvent(name: string, direction?: 'up', ...args: any[]): void;
+        dispatchEvent? (name: string, direction?: 'up', ...args: any[]): void;
         /**
          * Creates a new DispatchEvent and propagates it to controls based on the 
          * provided direction mechanism. Controls in the propagation chain that registered
@@ -10582,7 +10749,7 @@ module plat {
          * 
          * @see events.eventDirection
          */
-        dispatchEvent(name: string, direction?: 'down', ...args: any[]): void;
+        dispatchEvent? (name: string, direction?: 'down', ...args: any[]): void;
         /**
          * Creates a new DispatchEvent and propagates it to controls based on the 
          * provided direction mechanism. Controls in the propagation chain that registered
@@ -10597,7 +10764,7 @@ module plat {
          * 
          * @see events.eventDirection
          */
-        dispatchEvent(name: string, direction?: 'direct', ...args: any[]): void;
+        dispatchEvent? (name: string, direction?: 'direct', ...args: any[]): void;
         /**
          * Creates a new DispatchEvent and propagates it to controls based on the 
          * provided direction mechanism. Controls in the propagation chain that registered
@@ -10613,17 +10780,8 @@ module plat {
          * 
          * @see events.eventDirection
          */
-        dispatchEvent(name: string, direction?: string, ...args: any[]): void;
+        dispatchEvent? (name: string, direction?: string, ...args: any[]): void;
 
-        /**
-         * Registers a listener for a routeChange event. The listener will be called when a routeChange event 
-         * is propagating over the control. Any number of listeners can exist for a single event name.
-         *
-         * @param eventName='routeChange' This specifies that the listener is for a routeChange event.
-         * @param listener The method called when the routeChange is fired. The route argument will contain 
-         * a parsed route.
-         */
-        on(name: 'routeChange', listener: (ev: events.IDispatchEventInstance, route: web.IRoute<any>) => void): IRemoveListener;
         /**
          * Registers a listener for a DispatchEvent. The listener will be called when a DispatchEvent is 
          * propagating over the control. Any number of listeners can exist for a single event name.
@@ -10631,7 +10789,7 @@ module plat {
          * @param name The name of the event, cooinciding with the DispatchEvent name.
          * @param listener The method called when the DispatchEvent is fired.
          */
-        on(name: string, listener: (ev: events.IDispatchEventInstance, ...args: any[]) => void): IRemoveListener;
+        on? (name: string, listener: (ev: events.IDispatchEventInstance, ...args: any[]) => void): IRemoveListener;
 
         /**
          * The dispose event is called when a control is being removed from memory. A control should release 
@@ -10713,7 +10871,7 @@ module plat {
              * control's element. Can be null if no ITemplateControl
              * exists.
              */
-            templateControl: ui.ITemplateControl;
+            templateControl?: ui.ITemplateControl;
 
             /**
              * Specifies the priority of the attribute. The purpose of 
@@ -10722,7 +10880,7 @@ module plat {
              * and loaded before plat-tap, meaning it has the first chance 
              * to respond to events.
              */
-            priority: number;
+            priority?: number;
         }
 
         export class Name extends AttributeControl {
@@ -11570,8 +11728,9 @@ module plat {
                 if (isEmpty(expression)) {
                     return;
                 }
+
                 postpone(() => {
-                    if (isNull(this.element)) {
+                    if (!isNode(this.element)) {
                         return;
                     }
 
@@ -12632,7 +12791,7 @@ module plat {
             static findResource(control: ITemplateControl, alias: string): { resource: IResource; control: ITemplateControl; } {
                 var resource: IResource;
 
-                if (isNull(control) || !isString(alias) || isEmpty(alias)) {
+                if (isNull(control) || isNull(control.resources) || !isString(alias) || isEmpty(alias)) {
                     return null;
                 }
 
@@ -13055,13 +13214,13 @@ module plat {
          * The Type for referencing the '$TemplateControlFactory' injectable as a dependency.
          */
         export function ITemplateControlFactory(
-            $ResourcesFactory: IResourcesFactory,
-            $BindableTemplatesFactory: IBindableTemplatesFactory,
-            $ManagerCache: storage.ICache<processing.IElementManager>,
-            $TemplateCache: storage.ITemplateCache,
-            $Parser: expressions.IParser,
-            $Http: async.IHttp,
-            $Promise: async.IPromise): ITemplateControlFactory {
+            $ResourcesFactory?: IResourcesFactory,
+            $BindableTemplatesFactory?: IBindableTemplatesFactory,
+            $ManagerCache?: storage.ICache<processing.IElementManager>,
+            $TemplateCache?: storage.ITemplateCache,
+            $Parser?: expressions.IParser,
+            $Http?: async.IHttp,
+            $Promise?: async.IPromise): ITemplateControlFactory {
                 TemplateControl.$ResourcesFactory = $ResourcesFactory;
                 TemplateControl.$BindableTemplatesFactory = $BindableTemplatesFactory;
                 TemplateControl.$ManagerCache = $ManagerCache;
@@ -13333,7 +13492,7 @@ module plat {
              * Set to the root ancestor control from which this control inherits its context. This value
              * can be equal to this control.
              */
-            root: ITemplateControl;
+            root?: ITemplateControl;
 
             /**
              * A method called for ITemplateControls to set their template. During this method a control should
@@ -13374,7 +13533,7 @@ module plat {
              * @param aliases An array of aliases to search for.
              * @param resources An optional resources object to extend, if no resources object is passed in a new one will be created.
              */
-            getResources(aliases: Array<string>, resources?: any): IObject<any>;
+            getResources? (aliases: Array<string>, resources?: any): IObject<any>;
 
             /**
              * Starts at a control and searches up its parent chain for a particular resource alias. 
@@ -13383,7 +13542,7 @@ module plat {
              * 
              * @param alias The alias to search for.
              */
-            findResource(alias: string): { resource: IResource; control: ITemplateControl; };
+            findResource? (alias: string): { resource: IResource; control: ITemplateControl; };
 
             /**
              * Evaluates an expression string, using the control.context.
@@ -13392,7 +13551,7 @@ module plat {
              * @param context An optional context with which to parse. If 
              * no context is specified, the control.context will be used.
              */
-            evaluateExpression(expression: string, context?: any): any;
+            evaluateExpression? (expression: string, context?: any): any;
             /**
              * Evaluates a parsed expression, using the control.context.
              * 
@@ -13400,14 +13559,14 @@ module plat {
              * @param context An optional context with which to parse. If 
              * no context is specified, the control.context will be used.
              */
-            evaluateExpression(expression: expressions.IParsedExpression, context?: any): any;
+            evaluateExpression? (expression: expressions.IParsedExpression, context?: any): any;
         }
 
         /**
          * A control used in a controls.Viewport for simulated page navigation. The 
          * control has navigation events that are called when navigating to and from the control.
          */
-        export class ViewControl extends TemplateControl implements IViewControl {
+        export class BaseViewControl extends TemplateControl implements IBaseViewControl {
             /**
              * Detaches a ViewControl. Disposes its children, but does not dispose the ViewControl.
              * Useful for the Navigator when storing the ViewControl in history.
@@ -13415,7 +13574,7 @@ module plat {
              * @static
              * @param control The control to be detached.
              */
-            static detach(control: IViewControl): void {
+            static detach(control: IBaseViewControl): void {
                 TemplateControl.detach(control);
             }
 
@@ -13425,7 +13584,7 @@ module plat {
              * @static
              * @param control A control to dispose.
              */
-            static dispose(control: IViewControl): void {
+            static dispose(control: IBaseViewControl): void {
                 TemplateControl.dispose(control);
             }
 
@@ -13434,7 +13593,7 @@ module plat {
              * 
              * @static
              */
-            static getInstance(): IViewControl {
+            static getInstance(): IBaseViewControl {
                 return new ViewControl();
             }
 
@@ -13449,16 +13608,16 @@ module plat {
         /**
          * The Type for referencing the '$ViewControlFactory' injectable as a dependency.
          */
-        export function IViewControlFactory(): IViewControlFactory {
-            return ViewControl;
+        export function IBaseViewControlFactory(): IBaseViewControlFactory {
+            return BaseViewControl;
         }
 
-        register.injectable(__ViewControlFactory, IViewControlFactory, null, register.FACTORY);
+        register.injectable(__BaseViewControlFactory, IBaseViewControlFactory, null, register.FACTORY);
 
         /**
          * Creates and manages IViewControls.
          */
-        export interface IViewControlFactory {
+        export interface IBaseViewControlFactory {
             /**
              * Detaches a ViewControl. Disposes its children, but does not dispose the ViewControl.
              * Useful for the Navigator when storing the ViewControl in history.
@@ -13466,7 +13625,7 @@ module plat {
              * @static
              * @param control The control to be detached.
              */
-            detach(control: IViewControl): void;
+            detach(control: IBaseViewControl): void;
 
             /**
              * Recursively disposes a control and its children.
@@ -13474,31 +13633,31 @@ module plat {
              * @static
              * @param control A control to dispose.
              */
-            dispose(control: IViewControl): void;
+            dispose(control: IBaseViewControl): void;
 
             /**
              * Returns a new instance of an IViewControl.
              *
              * @static
              */
-            getInstance(): IViewControl;
+            getInstance(): IBaseViewControl;
         }
 
         /**
-         * Describes a control used in a controls.Viewport for simulated page navigation. The 
+         * Describes a control used in a viewport for simulated page navigation. The 
          * control has navigation events that are called when navigating to and from the control.
          */
-        export interface IViewControl extends ITemplateControl {
+        export interface IBaseViewControl extends ITemplateControl {
             /**
              * Specifies that this control will have its own context, and it should not inherit a context.
              */
-            hasOwnContext: boolean;
+            hasOwnContext?: boolean;
 
             /**
              * Specifies the navigator for this control. Used for navigating to other IViewControls
              * in a controls.Viewport.
              */
-            navigator: navigation.IBaseNavigator;
+            navigator?: navigation.IBaseNavigator;
 
             /**
              * This event is fired when this control has been navigated to.
@@ -13511,6 +13670,71 @@ module plat {
              * This event is fired when this control is being navigated away from.
              */
             navigatingFrom? (): void;
+        }
+
+        /**
+         * A control used in a viewport for simulated page navigation. The 
+         * control has navigation events that are called when navigating to and from the control.
+         */
+        export class ViewControl extends TemplateControl implements IViewControl {
+            navigator: navigation.INavigatorInstance;
+        }
+
+        /**
+         * Describes a control used in a controls.Viewport for simulated page navigation. The 
+         * control has navigation events that are called when navigating to and from the control.
+         */
+        export interface IViewControl extends IBaseViewControl {
+            /**
+             * Specifies the navigator for this control. Used for navigating to other IViewControls
+             * in a viewport.
+             */
+            navigator?: navigation.INavigatorInstance;
+        }
+
+        /**
+         * A control used in a routeport for simulated page navigation. The 
+         * control has navigation events that are called when navigating to and from the control.
+         * It also provides functionality for setting the title of a page.
+         */
+        export class WebViewControl extends BaseViewControl {
+            static titleElement = plat.acquire(plat.Document).head.querySelector('title');
+
+            title = '';
+
+            navigator: plat.navigation.IRoutingNavigator;
+
+            constructor() {
+                super();
+                this.on('navigated', () => {
+                    if (this.title.length === 0) {
+                        return;
+                    }
+                    WebViewControl.titleElement.textContent = this.title.replace(/\//g, ' ');
+                });
+            }
+
+            setTitle(title: string) {
+                this.title = title;
+            }
+        }
+
+        export interface IWebViewControl extends IBaseViewControl {
+            /**
+             * The title of the page, corresponds to the textContent of the title element in the HTML head.
+             */
+            title?: string;
+
+            /**
+             * Specifies the navigator for this control. Used for navigating to other IWebViewControls
+             * in a routeport.
+             */
+            navigator?: plat.navigation.IRoutingNavigator;
+
+            /**
+             * Allows the IWebViewControl set its title programmatically and have it reflect in the browser title.
+             */
+            setTitle? (title: string): void;
         }
 
         /**
@@ -14736,8 +14960,8 @@ module plat {
          * The Type for referencing the '$ResourcesFactory' injectable as a dependency.
          */
         export function IResourcesFactory(
-            $ContextManagerStatic: observable.IContextManagerStatic,
-            $Regex: expressions.IRegex): IResourcesFactory {
+            $ContextManagerStatic?: observable.IContextManagerStatic,
+            $Regex?: expressions.IRegex): IResourcesFactory {
                 Resources.$ContextManagerStatic = $ContextManagerStatic;
                 Resources.$Regex = $Regex;
                 return Resources;
@@ -15590,16 +15814,16 @@ module plat {
                     touchEvents = $compat.mappedEvents;
 
                 if ($compat.hasTouchEvents) {
-                    this._startEvents = [touchEvents.$touchstart, 'mousedown'];
-                    this._moveEvents = [touchEvents.$touchmove, 'mousemove'];
-                    this._endEvents = [touchEvents.$touchend, touchEvents.$touchcancel, 'mouseup'];
+                    this._startEvents = [touchEvents.$touchStart, 'mousedown'];
+                    this._moveEvents = [touchEvents.$touchMove, 'mousemove'];
+                    this._endEvents = [touchEvents.$touchEnd, touchEvents.$touchCancel, 'mouseup'];
                     return;
                 }
 
-                var cancelEvent = touchEvents.$touchcancel;
-                this._startEvents = [touchEvents.$touchstart];
-                this._moveEvents = [touchEvents.$touchmove];
-                this._endEvents = isNull(cancelEvent) ? [touchEvents.$touchend] : [touchEvents.$touchend, cancelEvent];
+                var cancelEvent = touchEvents.$touchCancel;
+                this._startEvents = [touchEvents.$touchStart];
+                this._moveEvents = [touchEvents.$touchMove];
+                this._endEvents = isNull(cancelEvent) ? [touchEvents.$touchEnd] : [touchEvents.$touchEnd, cancelEvent];
             }
             private __registerTypes(): void {
                 this.__registerType(this.__START);
@@ -16024,7 +16248,7 @@ module plat {
             return new DomEvents();
         }
 
-        plat.register.injectable(__DomEvents, IDomEvents);
+        register.injectable(__DomEvents, IDomEvents);
 
         /**
          * Describes an object for managing DOM event registration and handling.
@@ -16074,40 +16298,16 @@ module plat {
         export class DomEvent implements IDomEventInstance {
             $Document: Document = acquire(__Document);
 
-            /**
-             * The node or window object associated with this DomEvent.
-             */
             element: any;
-
-            /**
-             * The type of event this DomEvent is managing.
-             */
             event: string;
 
-            /**
-             * Initializes the element and event of the DomEvent object
-             * 
-             * @param The node associated with this DomEvent. 
-             * @param event The type of event this DomEvent is managing.
-             */
             initialize(element: Node, event: string): void;
-            /**
-             * Initializes the element and event of the DomEvent object
-             * 
-             * @param The window object. 
-             * @param event The type of event this DomEvent is managing.
-             */
             initialize(element: Window, event: string): void;
             initialize(element: any, event: string) {
                 this.element = element;
                 this.event = event;
             }
 
-            /**
-             * Triggers a custom event to bubble up to all elements in this branch of the DOM tree.
-             * 
-             * @param ev The event object to pass in as the custom event object's detail property.
-             */
             trigger(ev: IPointerEvent): void {
                 var event = <CustomEvent>this.$Document.createEvent('CustomEvent');
                 event.initCustomEvent(this.event, true, true, ev);
@@ -16680,7 +16880,7 @@ module plat {
                  * @param fromControl The ViewControl being navigated 
                  * away from.
                  */
-                navigateFrom(fromControl: IViewControl): void;
+                navigateFrom(fromControl: IBaseViewControl): void;
             }
 
             export class Viewport extends Baseport {
@@ -16694,7 +16894,7 @@ module plat {
                  * Constructors or their registered names for navigation 
                  * from one to another.
                  */
-                navigator: navigation.INavigator;
+                navigator: navigation.INavigatorInstance;
 
                 /**
                  * Checks for a defaultView, finds the ViewControl's injector, 
@@ -16735,7 +16935,7 @@ module plat {
                 defaultView: string;
             }
 
-            register.control(__Viewport, Viewport, [__Navigator]);
+            register.control(__Viewport, Viewport, [__NavigatorInstance]);
 
             class Routeport extends Baseport {
                 /**
@@ -17135,9 +17335,7 @@ module plat {
                  * @param ev The IArrayMethodInfo
                  */
                 _executeEvent(ev: observable.IArrayMethodInfo<any>): void {
-                    postpone(() => {
-                        (<any>this)['_' + ev.method](ev);
-                    });
+                    (<any>this)['_' + ev.method](ev);
                 }
 
                 /**
@@ -18361,10 +18559,10 @@ module plat {
          * The Type for referencing the '$NodeManagerStatic' injectable as a dependency.
          */
         export function INodeManagerStatic(
-            $Regex: expressions.IRegex,
-            $ContextManagerStatic: observable.IContextManagerStatic,
-            $Parser: expressions.IParser,
-            $TemplateControlFactory: ui.ITemplateControlFactory): INodeManagerStatic {
+            $Regex?: expressions.IRegex,
+            $ContextManagerStatic?: observable.IContextManagerStatic,
+            $Parser?: expressions.IParser,
+            $TemplateControlFactory?: ui.ITemplateControlFactory): INodeManagerStatic {
                 NodeManager.$Regex = $Regex;
                 NodeManager.$ContextManagerStatic = $ContextManagerStatic;
                 NodeManager.$Parser = $Parser;
@@ -19626,10 +19824,10 @@ module plat {
          * The Type for referencing the '$ElementManagerFactory' injectable as a dependency.
          */
         export function IElementManagerFactory(
-            $Document: Document,
-            $ManagerCache: storage.ICache<IElementManager>,
-            $ResourcesFactory: ui.IResourcesFactory,
-            $BindableTemplatesFactory: ui.IBindableTemplatesFactory): IElementManagerFactory {
+            $Document?: Document,
+            $ManagerCache?: storage.ICache<IElementManager>,
+            $ResourcesFactory?: ui.IResourcesFactory,
+            $BindableTemplatesFactory?: ui.IBindableTemplatesFactory): IElementManagerFactory {
                 ElementManager.$Document = $Document;
                 ElementManager.$ManagerCache = $ManagerCache;
                 ElementManager.$ResourcesFactory = $ResourcesFactory;
@@ -20064,7 +20262,7 @@ module plat {
         export class BaseNavigator implements IBaseNavigator {
             $EventManagerStatic: events.IEventManagerStatic = acquire(__EventManagerStatic);
             $NavigationEventStatic: events.INavigationEventStatic = acquire(__NavigationEventStatic);
-            $ViewControlFactory: ui.IViewControlFactory = acquire(__ViewControlFactory);
+            $BaseViewControlFactory: ui.IBaseViewControlFactory = acquire(__BaseViewControlFactory);
             $ContextManagerStatic: observable.IContextManagerStatic = acquire(__ContextManagerStatic);
 
             uid: string;
@@ -20085,7 +20283,7 @@ module plat {
 
             navigate(navigationParameter: any, options: IBaseNavigationOptions): void { }
 
-            navigated(control: ui.IViewControl, parameter: any, options: IBaseNavigationOptions): void {
+            navigated(control: ui.IBaseViewControl, parameter: any, options: IBaseNavigationOptions): void {
                 this.currentState = {
                     control: control
                 };
@@ -20151,10 +20349,10 @@ module plat {
             initialize(baseport: ui.controls.IBaseport): void;
 
             /**
-             * Allows a ui.IViewControl to navigate to another ui.IViewControl. Also allows for
-             * navigation parameters to be sent to the new ui.IViewControl.
+             * Allows a ui.IBaseViewControl to navigate to another ui.IBaseViewControl. Also allows for
+             * navigation parameters to be sent to the new ui.IBaseViewControl.
              * 
-             * @param navigationParameter An optional navigation parameter to send to the next ui.IViewControl.
+             * @param navigationParameter An optional navigation parameter to send to the next ui.IBaseViewControl.
              * @param options Optional IBaseNavigationOptions used for navigation.
              */
             navigate(navigationParameter: any, options?: IBaseNavigationOptions): void;
@@ -20163,11 +20361,11 @@ module plat {
              * Called by the Viewport to make the Navigator aware of a successful navigation. The Navigator will
              * in-turn call the app.navigated event.
              * 
-             * @param control The ui.IViewControl to which the navigation occurred.
+             * @param control The ui.IBaseViewControl to which the navigation occurred.
              * @param parameter The navigation parameter sent to the control.
              * @param options The INavigationOptions used during navigation.
              */
-            navigated(control: ui.IViewControl, parameter: any, options: IBaseNavigationOptions): void;
+            navigated(control: ui.IBaseViewControl, parameter: any, options: IBaseNavigationOptions): void;
 
             /**
              * Every navigator must implement this method, defining what happens when a view 
@@ -20184,7 +20382,7 @@ module plat {
          */
         export interface IBaseNavigationOptions {
             /**
-             * Allows a ui.IViewControl to leave itself out of the 
+             * Allows a ui.IBaseViewControl to leave itself out of the 
              * navigation history.
              */
             replace?: boolean;
@@ -20209,7 +20407,7 @@ module plat {
             /**
              * The view control associated with a history entry.
              */
-            control: ui.IViewControl;
+            control: ui.IBaseViewControl;
         }
 
         /**
@@ -20217,11 +20415,11 @@ module plat {
          * Every Viewport has its own Navigator instance, allowing multiple navigators to 
          * coexist in one app.
          */
-        export class Navigator extends BaseNavigator implements INavigator {
+        export class Navigator extends BaseNavigator implements INavigatorInstance {
             history: Array<IBaseNavigationState> = [];
 
             navigate(Constructor?: new (...args: any[]) => ui.IViewControl, options?: INavigationOptions): void;
-            navigate(injector?: dependency.IInjector<IControl>, options?: INavigationOptions): void;
+            navigate(injector?: dependency.IInjector<ui.IViewControl>, options?: INavigationOptions): void;
             navigate(Constructor?: any, options?: INavigationOptions) {
                 var state = this.currentState || <IBaseNavigationState>{},
                     viewControl = state.control,
@@ -20237,7 +20435,7 @@ module plat {
                     return;
                 }
 
-                this.$ViewControlFactory.detach(viewControl);
+                this.$BaseViewControlFactory.detach(viewControl);
 
                 if (isObject(parameter)) {
                     parameter = deepExtend({}, parameter);
@@ -20254,7 +20452,7 @@ module plat {
 
                     while (keys.length > 0) {
                         key = keys.pop();
-                        control = viewControlInjectors[key];
+                        control = <any>viewControlInjectors[key];
                         if (control.Constructor === Constructor) {
                             injector = control;
                             break;
@@ -20320,7 +20518,7 @@ module plat {
                 }
 
                 this.baseport.navigateFrom(viewControl);
-                this.$ViewControlFactory.dispose(viewControl);
+                this.$BaseViewControlFactory.dispose(viewControl);
 
                 var last: IBaseNavigationState = this._goBackLength(length);
 
@@ -20344,7 +20542,7 @@ module plat {
 
             clearHistory(): void {
                 var history = this.history,
-                    dispose = this.$ViewControlFactory.dispose;
+                    dispose = this.$BaseViewControlFactory.dispose;
 
                 while (history.length > 0) {
                     dispose(history.pop().control);
@@ -20384,7 +20582,7 @@ module plat {
                 length = isNumber(length) ? length : 1;
 
                 var last: IBaseNavigationState,
-                    dispose = this.$ViewControlFactory.dispose;
+                    dispose = this.$BaseViewControlFactory.dispose;
 
                 while (length-- > 0) {
                     if (!isNull(last) && !isNull(last.control)) {
@@ -20401,17 +20599,17 @@ module plat {
         /**
          * The Type for referencing the '$Navigator' injectable as a dependency.
          */
-        export function INavigator(): INavigator {
+        export function INavigatorInstance(): INavigatorInstance {
             return new Navigator();
         }
 
-        register.injectable(__Navigator, INavigator, null, register.INSTANCE);
+        register.injectable(__NavigatorInstance, INavigatorInstance, null, register.INSTANCE);
 
         /**
          * An object implementing INavigator allows ui.IViewControls to implement methods 
          * used to navigate within a Viewport.
          */
-        export interface INavigator extends IBaseNavigator {
+        export interface INavigatorInstance extends IBaseNavigator {
             /**
              * Contains the navigation history stack for the associated Viewport.
              */
@@ -20426,7 +20624,7 @@ module plat {
              * @param options Optional IBaseNavigationOptions used for Navigation.
              */
             navigate(Constructor?: new (...args: any[]) => ui.IViewControl, options?: INavigationOptions): void;
-            navigate(injector?: dependency.IInjector<IControl>, options?: INavigationOptions): void;
+            navigate(injector?: dependency.IInjector<ui.IViewControl>, options?: INavigationOptions): void;
 
             /**
              * Returns to the last visited ui.IViewControl.
@@ -20507,7 +20705,7 @@ module plat {
                 this.$Router.route(path, options);
             }
 
-            navigated(control: ui.IViewControl, parameter: web.IRoute<any>, options: web.IRouteNavigationOptions): void {
+            navigated(control: ui.IBaseViewControl, parameter: web.IRoute<any>, options: web.IRouteNavigationOptions): void {
                 super.navigated(control, parameter, options);
                 this.currentState.route = parameter;
             }
@@ -20555,7 +20753,7 @@ module plat {
 
                 this.__historyLength++;
                 this.baseport.navigateFrom(viewControl);
-                this.$ViewControlFactory.dispose(viewControl);
+                this.$BaseViewControlFactory.dispose(viewControl);
                 this.baseport.navigateTo(ev);
             }
         }
@@ -20575,12 +20773,12 @@ module plat {
          */
         export interface IRoutingNavigator extends IBaseNavigator {
             /**
-             * Allows a ui.IViewControl to navigate to another ui.IViewControl. Also allows for
-             * navigation parameters to be sent to the new ui.IViewControl.
+             * Allows a ui.IBaseViewControl to navigate to another ui.IBaseViewControl. Also allows for
+             * navigation parameters to be sent to the new ui.IBaseViewControl.
              * 
              * @param path The url path to navigate to.
-             * @param options Optional INavigationOptions for ignoring the current ui.IViewControl in the history as
-             * well as specifying a new templateUrl for the next ui.IViewControl to use.
+             * @param options Optional INavigationOptions for ignoring the current ui.IBaseViewControl in the history as
+             * well as specifying a new templateUrl for the next ui.IBaseViewControl to use.
              */
             navigate(path: string, options?: web.IRouteNavigationOptions): void;
 
@@ -20588,18 +20786,18 @@ module plat {
              * Called by the Viewport to make the Navigator aware of a successful navigation. The Navigator will
              * in-turn call the app.navigated event.
              * 
-             * @param control The ui.IViewControl to which the navigation occurred.
+             * @param control The ui.IBaseViewControl to which the navigation occurred.
              * @param parameter The navigation parameter sent to the control.
              * @param options The INavigationOptions used during navigation.
              */
-            navigated(control: ui.IViewControl, parameter: web.IRoute<any>, options: web.IRouteNavigationOptions): void;
+            navigated(control: ui.IBaseViewControl, parameter: web.IRoute<any>, options: web.IRouteNavigationOptions): void;
 
             /**
-             * Returns to the last visited ui.IViewControl.
+             * Returns to the last visited ui.IBaseViewControl.
              * 
-             * @param options Optional IBackNavigationOptions allowing the ui.IViewControl
+             * @param options Optional IBackNavigationOptions allowing the ui.IBaseViewControl
              * to customize navigation. Enables navigating back to a specified point in history as well
-             * as specifying a new templateUrl to use at the next ui.IViewControl.
+             * as specifying a new templateUrl to use at the next ui.IBaseViewControl.
              */
             goBack(options?: IBaseBackNavigationOptions): void;
         }
@@ -20685,11 +20883,13 @@ module plat {
         static load(node?: Node): void {
             var $LifecycleEventStatic = App.$LifecycleEventStatic,
                 $compiler = App.$Compiler,
-                body = App.$Document.body;
+                body = App.$Document.body,
+                head = App.$Document.head;
 
             $LifecycleEventStatic.dispatch('beforeLoad', App);
 
             if (isNull(node)) {
+                $compiler.compile(head);
                 body.setAttribute('plat-hide', '');
                 $compiler.compile(body);
                 body.removeAttribute('plat-hide');
@@ -20800,11 +21000,11 @@ module plat {
      * The Type for referencing the '$AppStatic' injectable as a dependency.
      */
     export function IAppStatic(
-        $Compat: ICompat,
-        $EventManagerStatic: events.IEventManagerStatic,
-        $Document: Document,
-        $Compiler: processing.ICompiler,
-        $LifecycleEventStatic: events.ILifecycleEventStatic): IAppStatic {
+        $Compat?: ICompat,
+        $EventManagerStatic?: events.IEventManagerStatic,
+        $Document?: Document,
+        $Compiler?: processing.ICompiler,
+        $LifecycleEventStatic?: events.ILifecycleEventStatic): IAppStatic {
             App.$Compat = $Compat;
             App.$EventManagerStatic = $EventManagerStatic;
             App.$Document = $Document;
@@ -20824,7 +21024,7 @@ module plat {
     /**
      * The Type for referencing the '$App' injectable as a dependency.
      */
-    export function IApp($AppStatic: IAppStatic): IApp {
+    export function IApp($AppStatic?: IAppStatic): IApp {
         return $AppStatic.app;
     }
 

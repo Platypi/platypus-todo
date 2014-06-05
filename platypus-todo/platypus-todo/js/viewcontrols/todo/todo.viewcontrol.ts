@@ -3,7 +3,7 @@ module app.viewcontrols {
 
     var clonedTodo: models.ITodo = { id: '-1', title: '', completed: false };
         
-    export class TodoMainVC extends plat.ui.ViewControl {
+    export class TodoMainVC extends plat.ui.WebViewControl {
         /**
          * All injectable dependencies defined during control registration will be 
          * passed into the constructor.
@@ -58,14 +58,6 @@ module app.viewcontrols {
 
             this.updateStatus();
         }
-
-        /**
-         * Since we are using routes to navigate, our navigator is of type IRoutingNavigator. 
-         * There are 2 types of navigation, with or without routing. The type of navigation 
-         * used is determined by the type of base port (either plat-routeport or plat-viewport) 
-         * used.
-         */
-        navigator: plat.navigation.IRoutingNavigator;
 
         /**
          * The navigatedTo event is fired when this control is navigated to directly using the 
