@@ -10947,17 +10947,17 @@ module plat {
          * a plat-name attribute. If the element corresponds to a registered 
          * control, the control will be included in the object.
          */
-        export interface INamedElement<T extends Element, U> {
+        export interface INamedElement<E extends Element, C> {
             /**
              * The element on which the plat-name is specified.
              */
-            element: T;
+            element: E;
 
             /**
              * The template control on the associated element, if one 
              * exists.
              */
-            control?: U;
+            control?: C;
         }
 
         /**
@@ -13700,6 +13700,10 @@ module plat {
         export class WebViewControl extends BaseViewControl {
             static titleElement = plat.acquire(plat.Document).head.querySelector('title');
 
+            static setTitle(title: string) {
+                WebViewControl.titleElement.textContent = title.replace(/\//g, ' ');
+            }
+
             title = '';
 
             navigator: plat.navigation.IRoutingNavigator;
@@ -13710,12 +13714,14 @@ module plat {
                     if (this.title.length === 0) {
                         return;
                     }
-                    WebViewControl.titleElement.textContent = this.title.replace(/\//g, ' ');
+
+                    WebViewControl.setTitle(this.title);
                 });
             }
 
             setTitle(title: string) {
                 this.title = title;
+                WebViewControl.setTitle(this.title);
             }
         }
 
@@ -14075,7 +14081,7 @@ module plat {
             $ElementManagerFactory: processing.IElementManagerFactory = acquire(__ElementManagerFactory);
 
             control: ITemplateControl;
-            templates: IObject<DocumentFragment> = {};
+            templates: IObject<async.IThenable<DocumentFragment>> = {};
 
             /**
              * A keyed cache of IElementManagers that represent the roots of compiled templates 
@@ -14085,18 +14091,15 @@ module plat {
 
             private __compiledControls: Array<ITemplateControl> = [];
 
-            bind(key: string, callback: IBindableTemplateCallback, relativeIdentifier?: string,
-                resources?: IObject<IResource>): DocumentFragment;
-            bind(key: string, callback: IBindableTemplateCallback, relativeIdentifier?: number,
-                    resources?: IObject<IResource>): DocumentFragment;
-            bind(key: any, callback: IBindableTemplateCallback,
-                    relativeIdentifier?: any, resources?: IObject<IResource>): DocumentFragment {
-                var template: any = this.templates[key],
+            bind(key: string, relativeIdentifier?: string, resources?: IObject<IResource>): async.IThenable<DocumentFragment>;
+            bind(key: string, relativeIdentifier?: number, resources?: IObject<IResource>): async.IThenable<DocumentFragment>;
+            bind(key: any, relativeIdentifier?: any, resources?: IObject<IResource>): async.IThenable<DocumentFragment> {
+                var templatePromise = this.templates[key],
                     control: ITemplateControl = this.control,
                     nodeMap: processing.INodeMap,
                     $exception: IExceptionStatic;
 
-                if (isNull(template)) {
+                if (isNull(templatePromise)) {
                     $exception = acquire(__ExceptionStatic);
                     $exception.fatal('Cannot bind template, no template stored with key: ' + key,
                         $exception.TEMPLATE);
@@ -14111,18 +14114,16 @@ module plat {
                     return;
                 }
 
-                if (isFunction(template.then)) {
-                    template.then((result: DocumentFragment) => {
-                        this._bindTemplate(key, <DocumentFragment>result.cloneNode(true), relativeIdentifier, resources, callback);
-                    }).catch((error: any) => {
-                        postpone(() => {
-                            $exception = acquire(__ExceptionStatic);
-                            $exception.fatal(error, $exception.COMPILE);
-                        });
+                return templatePromise.then((result: DocumentFragment) => {
+                    return this._bindTemplate(key, <DocumentFragment>result.cloneNode(true), relativeIdentifier, resources);
+                }, (error: any) => {
+                    postpone(() => {
+                        $exception = acquire(__ExceptionStatic);
+                        $exception.fatal(error, $exception.BIND);
                     });
-                    return;
-                }
-                this._bindTemplate(key, <DocumentFragment>template.cloneNode(true), relativeIdentifier, resources, callback);
+
+                    return <DocumentFragment>null;
+                });
             }
 
             add(key: string, template: Element): void;
@@ -14136,7 +14137,6 @@ module plat {
                 }
 
                 if (isDocumentFragment(template)) {
-                    this.templates[key] = template;
                     this._compile(key, template);
                     return;
                 }
@@ -14150,8 +14150,6 @@ module plat {
                 } else {
                     return;
                 }
-
-                this.templates[key] = fragment;
 
                 this._compile(key, fragment);
             }
@@ -14176,22 +14174,24 @@ module plat {
              * the binding of the INodeMap for a cloned template.
              */
             _bindTemplate(key: string, template: DocumentFragment, context: string,
-                resources: IObject<IResource>, callback: IBindableTemplateCallback): void {
+                resources: IObject<IResource>): async.IThenable<DocumentFragment> {
                 var control = this._createBoundControl(key, template, context, resources),
                     nodeMap = this._createNodeMap(control, template, context);
 
-                this._bindNodeMap(nodeMap, key).then(() => {
+                return this._bindNodeMap(nodeMap, key).then(() => {
                     control.startNode = template.insertBefore(this.$Document.createComment(control.type + ': start node'),
                         template.firstChild);
                     control.endNode = template.insertBefore(this.$Document.createComment(control.type + ': end node'),
                         null);
 
-                    callback.call(this.control, template);
-                }).catch((error) => {
+                    return template;
+                }, (error: any) => {
                     postpone(() => {
                         var $exception: IExceptionStatic = acquire(__ExceptionStatic);
-                        $exception.fatal(error, $exception.BIND);
+                        $exception.fatal(error, $exception.COMPILE);
                     });
+
+                    return <DocumentFragment>null;
                 });
             }
 
@@ -14208,7 +14208,7 @@ module plat {
                 this.control.controls.push(child);
 
                 manager.clone(template, $managerCache.read(this.control.uid), nodeMap);
-                return ($managerCache.read(child.uid)).bindAndLoad();
+                return $managerCache.read(child.uid).bindAndLoad();
             }
         
             /**
@@ -14240,24 +14240,19 @@ module plat {
 
                 promises.push(manager.fulfillTemplate());
 
-                this.templates[key] = <any>this.$Promise.all(promises).then((results) => {
+                this.templates[key] = this.$Promise.all(promises).then(() => {
                     var element = nodeMap.element,
                         startNode: Comment,
                         endNode: Comment;
 
-                    this.templates[key] = <DocumentFragment>nodeMap.element.cloneNode(true);
+                    var clone = <DocumentFragment>nodeMap.element.cloneNode(true);
 
                     startNode = control.startNode = this.$Document.createComment(control.type + ': start node');
                     endNode = control.endNode = this.$Document.createComment(control.type + ': end node');
                     element.insertBefore(startNode, element.firstChild);
                     element.insertBefore(endNode, null);
 
-                    return this.templates[key];
-                }).catch((error) => {
-                    postpone(() => {
-                        var $exception: IExceptionStatic = acquire(__ExceptionStatic);
-                        $exception.fatal(error, $exception.COMPILE);
-                    });
+                    return clone;
                 });
             }
 
@@ -14373,36 +14368,28 @@ module plat {
              * to specify a data context.
              * 
              * @param key The key used to retrieve the template.
-             * @param callback The callback associated with binding the template to the specified data
-             * context. 
              * @param relativeIdentifier The identifier string relative to this control's context
              * (e.g. 'foo.bar.baz' would signify the object this.context.foo.bar.baz). This is the 
              * most efficient way of specifying context, else the framework has to search for the 
              * object.
              * @param resources An object used as the resources for any top-level 
              * controls created in the template.
-             * @return {DocumentFragment} A clone of the template, fully reconstructed and ready to put
-             * in the DOM.
              */
-            bind(key: string, callback: IBindableTemplateCallback, relativeIdentifier?: string,
-                resources?: IObject<IResource>): DocumentFragment;
+            bind(key: string, relativeIdentifier?: string,
+                resources?: IObject<IResource>): async.IThenable<DocumentFragment>;
             /**
              * Method for linking a new template to a data context and returning a clone of the template, 
              * with all new IControls created if the template contains controls. It is not necessary
              * to specify a data context.
              * 
              * @param key The key used to retrieve the template.
-             * @param callback The callback associated with binding the template to the specified data
-             * context. 
              * @param relativeIdentifier The identifier number relative to this control's context. Only 
              * necessary when context is an array.
              * @param resources An object used as the resources for any top-level 
              * controls created in the template.
-             * @return {DocumentFragment} A clone of the template, fully reconstructed and ready to put
-             * in the DOM.
              */
-            bind(key: string, callback: IBindableTemplateCallback, relativeIdentifier?: number,
-                resources?: IObject<IResource>): DocumentFragment;
+            bind(key: string, relativeIdentifier?: number,
+                resources?: IObject<IResource>): async.IThenable<DocumentFragment>;
 
             /**
              * Adds a template to this object. The template will be stored with the key,
@@ -14448,21 +14435,6 @@ module plat {
              * Clears the memory being held by this BindableTemplates instance.
              */
             dispose(): void;
-        }
-
-        /**
-         * Describes a function used as the callback associated with binding a specified 
-         * template to a specified data context.
-         * 
-         * @param clone The bound clone of the specified template.
-         */
-        export interface IBindableTemplateCallback {
-            /**
-             * Receives a DocumentFragment clone ready to inject into DOM.
-             * 
-             * @param clone The bound clone of the specified template.
-             */
-            (clone: DocumentFragment): void;
         }
 
         /**
@@ -15276,7 +15248,7 @@ module plat {
             /**
              * Whether or not the user is currently touching the screen.
              */
-            _inTouch: boolean = false;
+            _inTouch: boolean;
 
             /**
              * The array of all elements currently registered for 
@@ -15462,10 +15434,11 @@ module plat {
             _onTouchStart(ev: IPointerEvent): void {
                 var isTouch = ev.type !== 'mousedown';
 
-                // return immediately if mouse event and currently in a touch or
-                // if the touch count is greater than 1
-                if (this._inTouch && !isTouch) {
+                // return immediately if mouse event and currently in a touch
+                if (!!this._inTouch && !isTouch) {
                     return;
+                } else if (isTouch) {
+                    this._inTouch = isTouch;
                 }
 
                 this.__standardizeEventObject(ev);
@@ -15474,7 +15447,6 @@ module plat {
                     return;
                 }
 
-                this._inTouch = isTouch;
                 this.__hasMoved = false;
 
                 this.__lastTouchDown = this.__swipeOrigin = {
@@ -15543,7 +15515,7 @@ module plat {
                 // if it is a mouse event and currently in a touch
                 if (!this.__detectMove ||
                     this.__touchCount > 1 ||
-                    (this._inTouch && ev.type === 'mousemove')) {
+                    (!!this._inTouch && ev.type === 'mousemove')) {
                     return;
                 }
 
@@ -15610,11 +15582,15 @@ module plat {
              */
             _onTouchEnd(ev: IPointerEvent): void {
                 // call prevent default to try and avoid mouse events
-                ev.preventDefault();
+                if (ev.type !== 'mouseup') {
+                    this._inTouch = false;
+                    ev.preventDefault();
+                } else if (!isUndefined(this._inTouch)) {
+                    return;
+                }
 
                 // clear hold event
                 this.__clearHold();
-                this._inTouch = false;
                 // set any captured target back to null
                 this.__capturedTarget = null;
 
@@ -17091,8 +17067,7 @@ module plat {
                                 return TemplateControl.determineTemplate(this, url);
                             }
                         }).then((template: DocumentFragment) => {
-                            var bindableTemplates = this.bindableTemplates;
-                            bindableTemplates.add(id, template.cloneNode(true));
+                            this.bindableTemplates.add(id, template.cloneNode(true));
                             return this;
                         });
                     } else {
@@ -17142,14 +17117,7 @@ module plat {
                  * resolves the clone to be placed into the DOM.
                  */
                 _instantiateTemplate(): async.IThenable<DocumentFragment> {
-                    var bindableTemplates = this.bindableTemplates,
-                        id = this._id;
-
-                    return new this.$Promise<DocumentFragment>((resolve, reject) => {
-                        bindableTemplates.bind(id, (clone: DocumentFragment) => {
-                            resolve(clone);
-                        });
-                    });
+                    return this.bindableTemplates.bind(this._id);
                 }
 
                 private __mapBindableTemplates(control: Template): void {
@@ -17285,6 +17253,9 @@ module plat {
                  * Adds an item to the ForEach's element.
                  */
                 _addItem(item: DocumentFragment): void {
+                    if (!isNode(item)) {
+                        return;
+                    }
                     this.dom.insertBefore(this.element, item);
                 }
 
@@ -17349,7 +17320,14 @@ module plat {
                     var bindableTemplates = this.bindableTemplates;
             
                     for (var i = 0; i < numberOfItems; ++i, ++index) {
-                        bindableTemplates.bind('item', this._addItem, index, this._getAliases(index));
+                        bindableTemplates.bind('item', index, this._getAliases(index)).then((fragment: DocumentFragment) => {
+                            this._addItem(fragment);
+                        }).catch((error: any) => {
+                            postpone(() => {
+                                var $exception: IExceptionStatic = acquire(__ExceptionStatic);
+                                $exception.fatal(error, $exception.BIND);
+                            });
+                        });
                     }
                 }
 
@@ -17736,7 +17714,7 @@ module plat {
                     for (var i = 0; i < numberOfItems; ++i, ++index) {
                         item = this.context[index];
 
-                        this.bindableTemplates.bind('option', this._insertOptions.bind(this, index, item), index);
+                        this.bindableTemplates.bind('option', index).then(this._insertOptions.bind(this, index, item));
                     }
                 }
 
@@ -17758,19 +17736,12 @@ module plat {
                             optgroup: any = groups[newGroup];
 
                         if (isNull(optgroup)) {
-                            optgroup = groups[newGroup] = <any>new this.$Promise<Element>((resolve) => {
-                                this.bindableTemplates.bind('group', (groupClone: DocumentFragment) => {
-                                    optgroup = groups[newGroup] = <Element>groupClone.childNodes[1];
+                            groups[newGroup] = <any>this.bindableTemplates.bind('group', '' + index).then((groupClone: DocumentFragment) => {
+                                optgroup = groups[newGroup] = <Element>groupClone.childNodes[1];
 
-                                    optgroup.appendChild(optionClone);
-                                    element.appendChild(groupClone);
-                                    resolve(optgroup);
-                                }, '' + index);
-                            }).catch((error: any) => {
-                                postpone(() => {
-                                    var $exception: IExceptionStatic = acquire(__ExceptionStatic);
-                                    $exception.warn(error.message, $exception.BIND);
-                                });
+                                optgroup.appendChild(optionClone);
+                                element.appendChild(groupClone);
+                                return optgroup;
                             });
                             return;
                         } else if (isFunction(optgroup.then)) {
@@ -17982,20 +17953,32 @@ module plat {
                 /**
                  * Removes the <plat-if> node from the DOM
                  */
-                replaceWith: string = null;
+                replaceWith = 'any';
 
                 /**
                  * The evaluated plat-options object.
                  */
                 options: observable.IObservableProperty<IIfOptions>;
 
-                private __removeListener: IRemoveListener;
-                private __condition: boolean;
                 /**
-                 * Creates a bindable template with its element nodes.
+                 * The Comment used to hold the place of the plat-if element.
                  */
-                setTemplate(): void {
-                    this.bindableTemplates.add('item', this.elementNodes);
+                commentNode: Comment;
+
+                /**
+                 * The DocumentFragment that stores the plat-if element when hidden.
+                 */
+                fragmentStore: DocumentFragment;
+
+                private __removeListener: IRemoveListener;
+                private __condition: boolean = false;
+
+                constructor() {
+                    super();
+                    var $Document: Document = acquire(__Document);
+
+                    this.commentNode = $Document.createComment('plat-if-@placeholder');
+                    this.fragmentStore = $Document.createDocumentFragment();
                 }
 
                 /**
@@ -18029,6 +18012,7 @@ module plat {
                             observe: <any>noop
                         };
                     }
+                    this._removeItem();
                     this.contextChanged();
                     this.__removeListener = this.options.observe(this.setter);
                 }
@@ -18041,6 +18025,9 @@ module plat {
                         this.__removeListener();
                         this.__removeListener = null;
                     }
+
+                    this.commentNode = null;
+                    this.fragmentStore = null;
                 }
 
                 /**
@@ -18058,7 +18045,7 @@ module plat {
                     if (!value) {
                         this._removeItem();
                     } else {
-                        this.bindableTemplates.bind('item', this._addItem);
+                        this._addItem();
                     }
 
                     this.__condition = value;
@@ -18067,22 +18054,26 @@ module plat {
                 /**
                  * The callback used to add the fragment to the DOM 
                  * after the bindableTemplate has been created.
-                 * 
-                 * @param item The DocumentFragment consisting of 
-                 * the inner template of the node.
                  */
-                _addItem(item: DocumentFragment): void {
-                    var endNode = this.endNode;
-                    this.dom.insertBefore(endNode.parentNode, item, endNode);
+                _addItem(): void {
+                    var commentNode = this.commentNode,
+                        parentNode = commentNode.parentNode;
+
+                    if (!isNode(parentNode)) {
+                        return;
+                    }
+
+                    parentNode.replaceChild(this.fragmentStore, commentNode);
                 }
 
                 /**
                  * Removes the node from the DOM.
                  */
                 _removeItem(): void {
-                    postpone(() => {
-                        Control.dispose(this.controls[0]);
-                    });
+                    var element = this.element;
+                    element.parentNode.insertBefore(this.commentNode, element);
+                    insertBefore(this.fragmentStore, element);
+
                 }
             }
 
