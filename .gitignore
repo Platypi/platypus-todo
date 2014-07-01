@@ -157,4 +157,4 @@ $RECYCLE.BIN/
 
 # Typescript compiled files
 *.js.map
-js/*.js
+*.js

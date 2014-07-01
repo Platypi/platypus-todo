@@ -57,5 +57,5 @@
      */
     plat.register.injectable('todoFactory', ITodoFactory, [
         plat.IUtils
-    ], plat.register.FACTORY);
+    ], plat.register.injectable.FACTORY);
 }
