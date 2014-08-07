@@ -1,4 +1,6 @@
-﻿module app.converters {
+﻿/// <reference path="../lib/platypus/platypus.d.ts" />
+
+module app.converters {
     'use strict';
 
     export class Converters {

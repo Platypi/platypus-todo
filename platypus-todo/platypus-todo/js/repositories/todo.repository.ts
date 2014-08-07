@@ -1,4 +1,6 @@
-﻿module app.repositories {
+﻿/// <reference path="../lib/platypus/platypus.d.ts" />
+
+module app.repositories {
     'use strict';
 
     export class TodoRepository implements ITodoRepository {

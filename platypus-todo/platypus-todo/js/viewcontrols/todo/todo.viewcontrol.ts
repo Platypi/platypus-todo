@@ -1,3 +1,5 @@
+/// <reference path="../../lib/platypus/platypus.d.ts" />
+
 module app.viewcontrols {
     'use strict';
 
@@ -81,7 +83,7 @@ module app.viewcontrols {
             var completed = 0;
 
             // plat.utils contains a number of useful methods
-            this.utils.forEach(this.context.todos, function (value) {
+            this.utils.forEach(this.context.todos, (value) => {
                 if (!value.completed) {
                     remaining++;
                 } else {
@@ -121,7 +123,7 @@ module app.viewcontrols {
         toggleAll() {
             var toggle = !this.context.allCompleted;
 
-            this.utils.forEach(this.context.todos, function (value) {
+            this.utils.forEach(this.context.todos, (value) => {
                 value.completed = toggle;
             });
 
@@ -163,7 +165,6 @@ module app.viewcontrols {
 
         clearCompletedTodos() {
             this.context.todos = this.utils.where(this.context.todos, { completed: false });
-
             this.updateStatus();
         }
     }

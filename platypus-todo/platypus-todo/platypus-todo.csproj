@@ -36,7 +36,7 @@
   <ItemGroup>
     <TypeScriptCompile Include="js\app.ts" />
     <TypeScriptCompile Include="js\converters\converters.ts" />
-    <TypeScriptCompile Include="js\lib\platypus\platypus.ts" />
+    <TypeScriptCompile Include="js\lib\platypus\platypus.d.ts" />
     <TypeScriptCompile Include="js\models\todo.model.ts" />
     <TypeScriptCompile Include="js\repositories\state.repository.ts" />
     <TypeScriptCompile Include="js\repositories\todo.repository.ts" />

@@ -1,3 +1,5 @@
+/// <reference path="lib/platypus/platypus.d.ts" />
+
 module app {
     'use strict';
 

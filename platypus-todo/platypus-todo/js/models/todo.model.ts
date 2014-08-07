@@ -1,4 +1,6 @@
-﻿module app.models {
+﻿/// <reference path="../lib/platypus/platypus.d.ts" />
+
+module app.models {
     'use strict';
 
     export class Todo implements ITodo {
