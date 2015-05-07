@@ -1,0 +1,19 @@
+{
+	"compilerOptions": {
+		"module": "commonjs",
+		"target": "ES5",
+		"noImplicitAny": true,
+        "removeComments": true,
+        "preserveConstEnums": true,
+        "out": "js/app.js",
+        "sourceMap": true
+	},
+	"files": [
+		"js/app/app.ts",
+		"js/injectables/converters",
+		"js/attributecontrols/enter.attributecontrol.ts",
+		"js/attributecontrols/escape.attributecontrol.ts",
+		"js/templatecontrols/todolist.templatecontrol.ts",
+		"js/viewcontrols/todo.viewcontrol.ts"
+	]
+}

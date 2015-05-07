@@ -1,0 +1,29 @@
+<plat-resources>
+	<injectable alias="converters">converters</injectable>
+</plat-resources>
+
+<header class="header">
+	<h1>todos</h1>
+	<input class="new-todo" placeholder="What needs to be done?" plat-bind="newTodo" plat-keyup="{ method: 'create(newTodo)', key: 'enter' }" autofocus>
+</header>
+<!-- This section should be hidden by default and shown when there are todos -->
+<todo-list bind-hidden="todos.length > 0" bind-todos="todos" bind-options="{ context: @control }" plat-options="{ context: @control }" plat-visible="{{todos.length > 0}}" class="main"></todo-list>
+<!-- This footer should hidden by default and shown when there are todos -->
+<footer plat-visible="{{todos.length > 0}}" class="footer">
+	<!-- This should be `0 items left` by default -->
+	<span class="todo-count"><strong>{{remainingCount}}</strong> {{@converters.pluralize('item', remainingCount)}} left</span>
+	<!-- Remove this if you don't implement routing -->
+	<ul class="filters">
+		<li>
+			<plat-link class="{{@converters.booleanToSelected(!status)}}" plat-options="{ view: 'todo-vc' }">All</a>
+		</li>
+		<li>
+			<plat-link class="{{@converters.booleanToSelected(status === 'active')}}" plat-options="{ view: 'status', parameters: { status: 'active'}}">Active</a>
+		</li>
+		<li>
+			<plat-link class="{{@converters.booleanToSelected(status === 'completed')}}" plat-options="{ view: 'status', parameters: { status: 'completed'}}">Completed</a>
+		</li>
+	</ul>
+	<!-- Hidden if no completed items are left ↓ -->
+	<button plat-visible="{{completedCount > 0}}" plat-tap="clear(todos)" class="clear-completed">Clear completed</button>
+</footer>

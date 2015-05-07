@@ -1,0 +1,19 @@
+<plat-resources>
+	<function alias="view">view</function>
+	<function alias="show">show</function>
+</plat-resources>
+
+<input class="toggle-all" plat-tap="toggleAll(todos)" plat-checked="{{allCompleted}}" type="checkbox">
+<label for="toggle-all">Mark all as complete</label>
+<ul plat-control="plat-foreach" plat-context="todos" class="todo-list">
+	<!-- These are here just to show the structure of the list items -->
+	<!-- List items should get the class `editing` when editing and `completed` when marked as completed -->
+	<li plat-visible="{{@show(completed)}}" class="{{@view(editing, completed)}}">
+		<div class="view">
+			<input class="toggle" type="checkbox" plat-tap="toggle(@context)" plat-checked="{{completed}}">
+			<label plat-dbltap="edit(@context)">{{label}}</label>
+			<button plat-tap="destroy(@index)" class="destroy"></button>
+		</div>
+		<input class="edit" plat-bind="label" plat-blur="save(@context)" on-enter="save(@context)" on-escape="cancel(@context)">
+	</li>
+</ul>
