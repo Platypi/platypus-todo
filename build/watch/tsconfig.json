@@ -10,6 +10,6 @@
 		"watch": true
 	},
 	"files": [
-		"references.d.ts"
+		"../../references.d.ts"
 	]
 }
