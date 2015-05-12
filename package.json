@@ -9,6 +9,8 @@
     "typescript": "latest"
   },
   "scripts": {
-    "prepublish": "./node_modules/.bin/tsc -p ."
+    "prepublish": "npm run build",
+    "build": "node_modules/.bin/tsc -p build",
+    "watch": "node_modules/.bin/tsc -p build/watch"
   }
 }

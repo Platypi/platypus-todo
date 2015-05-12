@@ -12,7 +12,7 @@ module app {
 		replaceWith = 'section';
 
 		context = {
-			todos: <Array<ITodo>>todos,
+			todos: <Array<ITodo>>undefined,
 			allCompleted: false,
 			completedCount: 0,
 			remainingCount: 0,
@@ -20,14 +20,20 @@ module app {
 			status: ''
 		};
 		
+		constructor(protected repository: TodoRepository) {
+			super();
+		}
+		
 		setTemplate() {
 			this.dom.addClass(this.element, 'todoapp');
 		}
 		
 		navigatedTo(parameters: { status?: string; }) {
 			this.context.status = parameters.status;
-			
-			this.refresh(this.context.todos);
+			this.repository.pull().then((todos) => {
+				this.refresh(todos);
+				this.context.todos = todos;
+			});
 		}
 		
 		create(todo: string) {
@@ -36,11 +42,14 @@ module app {
 				return;
 			}
 
-			this.context.todos.push({
+			var todos: Array<ITodo> = this.context.todos;
+
+			todos.push({
 				label: todo,
 				completed: false
 			});
 			this.context.newTodo = '';
+			this.refresh(todos);
 		}
 		
 		refresh(todos: Array<ITodo>) {
@@ -59,6 +68,7 @@ module app {
 			context.allCompleted = remaining === 0;
 			context.completedCount = completed;
 			context.remainingCount = remaining;
+			this.repository.push(todos);
 		}
 		
 		show(completed: boolean): boolean {
@@ -73,12 +83,15 @@ module app {
 		}
 
 		clear(todos: Array<ITodo>) {
-			this.context.todos = this.utils.filter((todo) => {
+			todos = this.utils.filter((todo) => {
 				return !todo.completed;
 			}, todos);
 			this.refresh(todos);
+			this.context.todos = todos;
 		}
 	}
 	
-	plat.register.viewControl('todo-vc', TodoControl);
+	plat.register.viewControl('todo-vc', TodoControl, [
+		TodoRepository
+	]);
 }
