@@ -5,11 +5,11 @@
 		"noImplicitAny": true,
         "removeComments": true,
         "preserveConstEnums": true,
-        "out": "js/app.js",
+        "out": "test/test.js",
         "sourceMap": true,
-		"watch": true
+		"watch": false
 	},
 	"files": [
-		"../../references.d.ts"
+		"../../test/references.d.ts"
 	]
 }

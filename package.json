@@ -1,16 +1,27 @@
 {
   "private": true,
   "dependencies": {
-    "todomvc-app-css": "^2.0.0",
-    "todomvc-common": "^1.0.0"
+    "todomvc-app-css": "latest",
+    "todomvc-common": "latest"
   },
   "devDependencies": {
+    "jasmine-core": "latest",
+    "karma": "latest",
+    "karma-chrome-launcher": "latest",
+    "karma-cli": "latest",
+    "karma-jasmine": "latest",
     "platypus": "latest",
+    "tsd": "^0.6.0-beta.5",
     "typescript": "latest"
   },
   "scripts": {
     "prepublish": "npm run build",
-    "build": "node_modules/.bin/tsc -p build",
-    "watch": "node_modules/.bin/tsc -p build/watch"
+    "build": "npm run build-js && npm run build-test",
+    "build-js": "node_modules/.bin/tsc -p build/js",
+    "build-test": "node_modules/.bin/tsc -p build/test",
+    "watch-js": "node_modules/.bin/tsc -p build/js/watch",
+    "watch-test": "node_modules/.bin/tsc -p build/test/watch",
+    "test": "npm run build-test && npm run karma",
+    "karma": "node_modules/.bin/karma start karma.conf.js"
   }
 }
