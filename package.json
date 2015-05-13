@@ -18,16 +18,16 @@
   },
   "scripts": {
     "build": "npm run build-examples && npm run build-test",
-    "build-examples": "node_modules/.bin/tsc -p build/examples",
-    "build-test": "node_modules/.bin/tsc -p build/test",
+    "build-examples": "tsc -p build/examples",
+    "build-test": "tsc -p build/test",
     "clean": "npm run clean-tsc && npm run clean-coverage",
-    "clean-tsc": "node_modules/.bin/rimraf examples/**/*.js* test/**/*.*.js",
-    "clean-coverage": "node_modules/.bin/rimraf test/coverage",
+    "clean-tsc": "rimraf examples/**/*.js* test/**/*.*.js",
+    "clean-coverage": "rimraf test/coverage",
     "prepublish": "npm run build",
-    "watch-examples": "node_modules/.bin/tsc -p build/examples/watch",
-    "watch-test": "node_modules/.bin/tsc -p build/test/watch",
+    "watch-examples": "tsc -p build/examples/watch",
+    "watch-test": "tsc -p build/test/watch",
     "test": "npm run tsd && npm run build-test && npm run karma && npm run clean-tsc",
-    "karma": "node_modules/.bin/karma start karma.conf.js",
-    "tsd": "node_modules/.bin/tsd update -so"
+    "karma": "karma start karma.conf.js",
+    "tsd": "tsd update -so"
   }
 }
