@@ -9,7 +9,6 @@ module app {
 
 	export class TodoControl extends plat.ui.ViewControl implements IFilterAndRefresh {		
 		templateUrl = '/js/viewcontrols/todo.viewcontrol.html';
-		replaceWith = 'section';
 
 		context = {
 			todos: <Array<ITodo>>undefined,
@@ -24,8 +23,8 @@ module app {
 			super();
 		}
 		
-		setTemplate() {
-			this.dom.addClass(this.element, 'todoapp');
+		loaded() {
+			this.elementNodes = this.dom.replace(this.element);
 		}
 		
 		navigatedTo(parameters: { status?: string; }) {
@@ -88,6 +87,10 @@ module app {
 			}, todos);
 			this.refresh(todos);
 			this.context.todos = todos;
+		}
+		
+		dispose() {
+			this.dom.removeAll(this.elementNodes[0], this.elementNodes[this.elementNodes.length - 1]);
 		}
 	}
 	

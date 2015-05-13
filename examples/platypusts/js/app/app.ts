@@ -5,7 +5,7 @@ module app {
 	class App extends plat.App {
 		constructor(router: plat.routing.Router, browserConfig: plat.web.IBrowserConfig) {
 			super();
-
+			browserConfig.baseUrl = 'examples/platypusts';
 			router.configure([
 				{ pattern: '', view: TodoControl },
 				{ pattern: '/:status', view: TodoControl, alias: 'status' }

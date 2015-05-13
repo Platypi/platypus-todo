@@ -1,5 +1,5 @@
 /// <reference path="typings/tsd.d.ts" />
-/// <reference path="../js/references.d.ts" />
+/// <reference path="../examples/platypusts/js/references.d.ts" />
 /// <reference path="mocks/storage.mock.ts" />
 /// <reference path="mocks/todo.repository.mock.ts" />
 /// <reference path="mocks/todolist.templatecontrol.mock.ts" />

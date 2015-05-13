@@ -6,4 +6,4 @@
 /// <reference path="attributecontrols/escape.attributecontrol.ts" />
 /// <reference path="templatecontrols/todolist.templatecontrol.ts" />
 /// <reference path="viewcontrols/todo.viewcontrol.ts" />
-/// <reference path="../node_modules/platypus/dist/platypus.d.ts" />
+/// <reference path="../../../node_modules/platypus/dist/platypus.d.ts" />
