@@ -20,11 +20,14 @@
     "build": "npm run build-js && npm run build-test",
     "build-js": "node_modules/.bin/tsc -p build/js",
     "build-test": "node_modules/.bin/tsc -p build/test",
-    "clean": "node_modules/.bin/rimraf -p js/*.js* js/**/*.js* test/coverage/** test/**/*.js*",
+    "clean": "npm run clean-tsc && npm run clean-coverage",
+    "clean-tsc": "node_modules/.bin/rimraf js/*.js* js/**/*.js* test/**/*.*.js",
+    "clean-coverage": "node_modules/.bin/rimraf test/coverage",
     "prepublish": "npm run build",
     "watch-js": "node_modules/.bin/tsc -p build/js/watch",
     "watch-test": "node_modules/.bin/tsc -p build/test/watch",
-    "test": "npm run build-test && npm run karma",
-    "karma": "node_modules/.bin/karma start karma.conf.js"
+    "test": "npm run tsd && npm run build-test && npm run karma && npm run clean-tsc",
+    "karma": "node_modules/.bin/karma start karma.conf.js",
+    "tsd": "node_modules/.bin/tsd update -so"
   }
 }

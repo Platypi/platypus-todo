@@ -55,14 +55,6 @@ module app {
 			this.refresh();
 		}
 
-		refresh() {
-			this.getContext().refresh(this.context.todos);
-		}
-
-		show(completed: boolean) {
-			return this.getContext().show(completed);
-		}
-
 		view(editing: boolean, completed: boolean) {
 			if(editing) {
 				return 'editing';
@@ -73,8 +65,16 @@ module app {
 			}
 		}
 
-		getContext(): IFilterAndRefresh {
+		protected show(completed: boolean) {
+			return this.getContext().show(completed);
+		}
+
+		protected getContext(): IFilterAndRefresh {
 			return this.options.value.context;
+		}
+
+		protected refresh() {
+			this.getContext().refresh(this.context.todos);
 		}
 	}
 

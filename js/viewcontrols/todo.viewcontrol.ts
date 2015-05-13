@@ -30,7 +30,7 @@ module app {
 		
 		navigatedTo(parameters: { status?: string; }) {
 			this.context.status = parameters.status;
-			this.repository.pull().then((todos) => {
+			return this.repository.pull().then((todos) => {
 				this.refresh(todos);
 				this.context.todos = todos;
 			});
