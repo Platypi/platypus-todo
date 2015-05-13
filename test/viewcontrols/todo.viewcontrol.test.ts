@@ -1,6 +1,6 @@
 /// <reference path="../references.d.ts" />
 
-describe('Testing Converters injectable to', () => {
+describe('Testing Todo ViewControl to', () => {
 	var converters: app.Converters;
 
 	beforeEach(() => {
